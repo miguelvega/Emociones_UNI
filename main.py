@@ -142,7 +142,7 @@ def prepare_dataset():
     images = np.vstack(images)
     labels = np.concatenate(labels)
     np.save('X.npy', images)
-    np.save('y.npy', digits)
+    np.save('y.npy', labels)
     return "OK!"
 
 @app.route('/X.npy', methods=['GET'])
