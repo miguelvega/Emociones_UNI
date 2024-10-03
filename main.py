@@ -8,6 +8,10 @@ import numpy as np
 
 app = Flask(__name__)
 
+
+imagenes = []
+etiquetas = []
+
 main_html = """
 <html>
 <head></head>
@@ -16,16 +20,11 @@ main_html = """
   var lastX, lastY;
   var ctx;
 
-   function getRndInteger(min, max) {
-    return Math.floor(Math.random() * (max - min) ) + min;
-   }
-
   function InitThis() {
       ctx = document.getElementById('myCanvas').getContext("2d");
 
       emociones = ["🙂", "🙁", "😠"];
       dibujantes = ["Vega", "Canales", "Acuña"];
-      emociones_palabras = ["Feliz", "Triste", "Enojado"];
       
       
       random_emocion = Math.floor(Math.random() * emociones.length);
@@ -37,7 +36,10 @@ main_html = """
 
       
       document.getElementById('mensaje').innerHTML = aleatorio_dibujante + ' dibuje una cara ' + aleatorio_emocion;
-      document.getElementById('numero').value = aleatorio_emocion + "," + aleatorio_dibujante;  // Guardar emoción y dibujante
+      
+      
+      document.getElementById('numero').value = aleatorio_emocion;  
+      document.getElementById('dibujante').value = aleatorio_dibujante;  
 
       $('#myCanvas').mousedown(function (e) {
           mousePressed = true;
@@ -73,7 +75,6 @@ main_html = """
   }
 
   function clearArea() {
-      // Use the identity matrix while clearing the canvas
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   }
@@ -81,7 +82,7 @@ main_html = """
   //https://www.askingbox.com/tutorial/send-html5-canvas-as-image-to-server
   function prepareImg() {
      var canvas = document.getElementById('myCanvas');
-     document.getElementById('myImage').value = canvas.toDataURL();
+     document.getElementById('myImage').value = canvas.toDataURL();  // Convertir canvas a base64
   }
 </script>
 <body onload="InitThis();">
@@ -100,6 +101,7 @@ main_html = """
     <div align="center">
       <form method="post" action="upload" onsubmit="javascript:prepareImg();"  enctype="multipart/form-data">
       <input id="numero" name="numero" type="hidden" value="">
+      <input id="dibujante" name="dibujante" type="hidden" value="">  <!-- Dibujante oculto -->
       <input id="myImage" name="myImage" type="hidden" value="">
       <input id="bt_upload" type="submit" value="Enviar">
       </form>
@@ -116,48 +118,59 @@ def main():
 def upload():
     try:
         
-        img_data = request.form.get('myImage').replace("data:image/png;base64,","")
-        emocion_dibujante = request.form.get('numero').split(",")
-        emocion = emocion_dibujante[0]
-        dibujante = emocion_dibujante[1]
+        img_data = request.form.get('myImage').replace("data:image/png;base64,", "")
+        emocion = request.form.get('numero')  
+        dibujante = request.form.get('dibujante')  
+
         print(f"Emoción: {emocion}, Dibujante: {dibujante}")
-        
+
         emociones = ["🙂", "🙁", "😠"]  
-        emociones_palabras = ["Feliz", "Triste", "Enojado"] 
-          
+        emociones_palabras = ["Feliz", "Triste", "Enojado"]  
+
+        
         emocion_index = emociones.index(emocion)
         emocion_palabra = emociones_palabras[emocion_index]
 
+        
         with tempfile.NamedTemporaryFile(delete=False, mode="w+b", suffix='.png', dir=str(emocion_palabra)) as fh:
             fh.write(base64.b64decode(img_data))
-        print("Imagen cargada")
+
+        
+        imagenes.append(fh.name)  
+        etiquetas.append((dibujante, emocion_palabra))  
+
+        print("Imagen cargada correctamente")
     except Exception as err:
-        print("Error ocurrido")
+        print("Error ocurrido al cargar la imagen")
         print(err)
 
     return redirect("/", code=302)
 
+
 @app.route('/prepare', methods=['GET'])
 def prepare_dataset():
-    images = []
-    emociones_palabras = ["Feliz", "Triste", "Enojado"]
-    dibujantes = ["Vega", "Canales", "Acuña"]
-    labels = []
     
-    for emocion in emociones_palabras:
-        filelist = glob.glob('{}/*.png'.format(emocion))
-        images_read = io.concatenate_images(io.imread_collection(filelist))
-        images_read = images_read[:, :, :, 3]
-           
-        for dibujante in dibujantes:
-            labels_read = np.array([(emocion, dibujante)] * images_read.shape[0])
-            images.append(images_read)
-            labels.append(labels_read)
+    loaded_images = []
+    loaded_labels = []
+
+    for img_path, etiqueta in zip(imagenes, etiquetas):
+        
+        img = io.imread(img_path)
+        loaded_images.append(img)
+
+        
+        loaded_labels.append(etiqueta)
+
     
-    images = np.vstack(images)
-    labels = np.concatenate(labels)
-    np.save('X.npy', images)
-    np.save('y.npy', labels)
+    images_np = np.array(loaded_images)
+    labels_np = np.array(loaded_labels)
+
+    
+    np.save('X.npy', images_np)
+    np.save('y.npy', labels_np)
+
+    print(f"{len(loaded_images)} imágenes procesadas y guardadas correctamente.")
+    
     return "Ok!"
 
 @app.route('/X.npy', methods=['GET'])
