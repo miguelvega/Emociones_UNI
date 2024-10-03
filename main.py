@@ -124,11 +124,9 @@ def upload():
         
         emociones = ["🙂", "🙁", "😠"]  
         emociones_palabras = ["Feliz", "Triste", "Enojado"] 
-        
-        
+          
         emocion_index = emociones.index(emocion)
         emocion_palabra = emociones_palabras[emocion_index]
-
 
         with tempfile.NamedTemporaryFile(delete=False, mode="w+b", suffix='.png', dir=str(emocion_palabra)) as fh:
             fh.write(base64.b64decode(img_data))
@@ -150,8 +148,7 @@ def prepare_dataset():
         filelist = glob.glob('{}/*.png'.format(emocion))
         images_read = io.concatenate_images(io.imread_collection(filelist))
         images_read = images_read[:, :, :, 3]
-        
-        
+           
         for dibujante in dibujantes:
             labels_read = np.array([(emocion, dibujante)] * images_read.shape[0])
             images.append(images_read)
@@ -161,8 +158,7 @@ def prepare_dataset():
     labels = np.concatenate(labels)
     np.save('X.npy', images)
     np.save('y.npy', labels)
-    
-    return "¡Ok!"
+    return "Ok!"
 
 @app.route('/X.npy', methods=['GET'])
 def download_X():
