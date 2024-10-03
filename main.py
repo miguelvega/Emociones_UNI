@@ -23,14 +23,21 @@ main_html = """
   function InitThis() {
       ctx = document.getElementById('myCanvas').getContext("2d");
 
-
-      numero = getRndInteger(0, 10);
       emociones = ["🙂", "🙁", "😠"];
-      random = Math.floor(Math.random() * emociones.length);
-      aleatorio = emociones[random];
+      dibujantes = ["Vega", "Canales", "Acuña"];
+      emociones_palabras = ["Feliz", "Triste", "Enojado"];
+      
+      // Emoción aleatoria
+      random_emocion = Math.floor(Math.random() * emociones.length);
+      aleatorio_emocion = emociones[random_emocion];
+      
+      // Dibujante aleatorio
+      random_dibujante = Math.floor(Math.random() * dibujantes.length);
+      aleatorio_dibujante = dibujantes[random_dibujante];
 
-      document.getElementById('mensaje').innerHTML  = 'Dibujando una cara ' + aleatorio;
-      document.getElementById('numero').value = aleatorio;
+      // Mostrar mensaje con emoción y dibujante
+      document.getElementById('mensaje').innerHTML = aleatorio_dibujante + ' dibuje una cara ' + aleatorio_emocion;
+      document.getElementById('numero').value = aleatorio_emocion + "," + aleatorio_dibujante;  // Guardar emoción y dibujante
 
       $('#myCanvas').mousedown(function (e) {
           mousePressed = true;
@@ -76,9 +83,6 @@ main_html = """
      var canvas = document.getElementById('myCanvas');
      document.getElementById('myImage').value = canvas.toDataURL();
   }
-
-
-
 </script>
 <body onload="InitThis();">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
@@ -102,7 +106,6 @@ main_html = """
     </div>
 </body>
 </html>
-
 """
 
 @app.route("/")
@@ -112,49 +115,66 @@ def main():
 @app.route('/upload', methods=['POST'])
 def upload():
     try:
-        # check if the post request has the file part
+        # Guardar imagen y datos de la emoción y dibujante
         img_data = request.form.get('myImage').replace("data:image/png;base64,","")
-        emocion = request.form.get('numero')
-        print(emocion)
-        with tempfile.NamedTemporaryFile(delete = False, mode = "w+b", suffix='.png', dir=str(emocion)) as fh:
+        emocion_dibujante = request.form.get('numero').split(",")
+        emocion = emocion_dibujante[0]
+        dibujante = emocion_dibujante[1]
+        print(f"Emoción: {emocion}, Dibujante: {dibujante}")
+        
+        emociones = ["🙂", "🙁", "😠"]  # Emojis
+        emociones_palabras = ["Feliz", "Triste", "Enojado"]  # Palabras para los directorios
+        
+        # Convertir emoción de emoji a palabra
+        emocion_index = emociones.index(emocion)
+        emocion_palabra = emociones_palabras[emocion_index]
+
+        # Guardar la imagen en el directorio con nombre en palabras
+        with tempfile.NamedTemporaryFile(delete=False, mode="w+b", suffix='.png', dir=str(emocion_palabra)) as fh:
             fh.write(base64.b64decode(img_data))
-        #file = request.files['myImage']
-        print("Image uploaded")
+        print("Imagen cargada")
     except Exception as err:
-        print("Error occurred")
+        print("Error ocurrido")
         print(err)
 
     return redirect("/", code=302)
 
-
 @app.route('/prepare', methods=['GET'])
 def prepare_dataset():
     images = []
-    emociones = ["Feliz","Triste","Enojado"]
+    emociones_palabras = ["Feliz", "Triste", "Enojado"]
+    dibujantes = ["Vega", "Canales", "Acuña"]
     labels = []
-    for emocion in emociones:
-      filelist = glob.glob('{}/*.png'.format(emocion))
-      images_read = io.concatenate_images(io.imread_collection(filelist))
-      images_read = images_read[:, :, :, 3]
-      labels_read = np.array([emocion] * images_read.shape[0])
-      images.append(images_read)
-      labels.append(labels_read)
+    
+    for emocion in emociones_palabras:
+        filelist = glob.glob('{}/*.png'.format(emocion))
+        images_read = io.concatenate_images(io.imread_collection(filelist))
+        images_read = images_read[:, :, :, 3]
+        
+        # Crear etiquetas con emoción y dibujante
+        for dibujante in dibujantes:
+            labels_read = np.array([(emocion, dibujante)] * images_read.shape[0])
+            images.append(images_read)
+            labels.append(labels_read)
+    
     images = np.vstack(images)
     labels = np.concatenate(labels)
     np.save('X.npy', images)
     np.save('y.npy', labels)
-    return "OK!"
+    
+    return "¡Dataset preparado!"
 
 @app.route('/X.npy', methods=['GET'])
 def download_X():
     return send_file('./X.npy')
+
 @app.route('/y.npy', methods=['GET'])
 def download_y():
     return send_file('./y.npy')
 
 if __name__ == "__main__":
-    emociones = ['Feliz', 'Triste', 'Enojado']
-    for e in emociones:
+    emociones_palabras = ['Feliz', 'Triste', 'Enojado']
+    for e in emociones_palabras:
         if not os.path.exists(str(e)):
             os.mkdir(str(e))
     app.run()
