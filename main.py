@@ -27,15 +27,15 @@ main_html = """
       dibujantes = ["Vega", "Canales", "Acuña"];
       emociones_palabras = ["Feliz", "Triste", "Enojado"];
       
-      // Emoción aleatoria
+      
       random_emocion = Math.floor(Math.random() * emociones.length);
       aleatorio_emocion = emociones[random_emocion];
       
-      // Dibujante aleatorio
+      
       random_dibujante = Math.floor(Math.random() * dibujantes.length);
       aleatorio_dibujante = dibujantes[random_dibujante];
 
-      // Mostrar mensaje con emoción y dibujante
+      
       document.getElementById('mensaje').innerHTML = aleatorio_dibujante + ' dibuje una cara ' + aleatorio_emocion;
       document.getElementById('numero').value = aleatorio_emocion + "," + aleatorio_dibujante;  // Guardar emoción y dibujante
 
@@ -115,21 +115,21 @@ def main():
 @app.route('/upload', methods=['POST'])
 def upload():
     try:
-        # Guardar imagen y datos de la emoción y dibujante
+        
         img_data = request.form.get('myImage').replace("data:image/png;base64,","")
         emocion_dibujante = request.form.get('numero').split(",")
         emocion = emocion_dibujante[0]
         dibujante = emocion_dibujante[1]
         print(f"Emoción: {emocion}, Dibujante: {dibujante}")
         
-        emociones = ["🙂", "🙁", "😠"]  # Emojis
-        emociones_palabras = ["Feliz", "Triste", "Enojado"]  # Palabras para los directorios
+        emociones = ["🙂", "🙁", "😠"]  
+        emociones_palabras = ["Feliz", "Triste", "Enojado"] 
         
-        # Convertir emoción de emoji a palabra
+        
         emocion_index = emociones.index(emocion)
         emocion_palabra = emociones_palabras[emocion_index]
 
-        # Guardar la imagen en el directorio con nombre en palabras
+
         with tempfile.NamedTemporaryFile(delete=False, mode="w+b", suffix='.png', dir=str(emocion_palabra)) as fh:
             fh.write(base64.b64decode(img_data))
         print("Imagen cargada")
@@ -151,7 +151,7 @@ def prepare_dataset():
         images_read = io.concatenate_images(io.imread_collection(filelist))
         images_read = images_read[:, :, :, 3]
         
-        # Crear etiquetas con emoción y dibujante
+        
         for dibujante in dibujantes:
             labels_read = np.array([(emocion, dibujante)] * images_read.shape[0])
             images.append(images_read)
@@ -162,7 +162,7 @@ def prepare_dataset():
     np.save('X.npy', images)
     np.save('y.npy', labels)
     
-    return "¡Dataset preparado!"
+    return "¡Ok!"
 
 @app.route('/X.npy', methods=['GET'])
 def download_X():
